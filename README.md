@@ -3,6 +3,10 @@ spanalot
 
 A simple utility for creating and modifying spannables in Android
 
+This may end up on maven central sometime in the future, in the mean time, it's just one class
+so you can copy-and-paste it into your project.
+https://github.com/evant/spanalot/blob/master/spanalot/src/main/java/me/tatarka/spanalot/Spanalot.java
+
 ### Usage
 
 ```java
