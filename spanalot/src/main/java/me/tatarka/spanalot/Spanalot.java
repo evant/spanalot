@@ -53,6 +53,7 @@ public class Spanalot implements Spanned {
         Piece piece = new Piece(start, end);
         piece.addSpans(spans);
         pieces.add(piece);
+        globalPiece.end = end;
         return this;
     }
 
@@ -287,6 +288,7 @@ public class Spanalot implements Spanned {
             for (int i = pieces.indexOf(this) + 1; i < pieces.size(); i++) {
                 pieces.get(i).shift(newEnd - oldEnd);
             }
+            globalPiece.end += newEnd - oldEnd;
 
             return this;
         }
@@ -322,8 +324,23 @@ public class Spanalot implements Spanned {
             for (int i = pieces.indexOf(this) + 1; i < pieces.size(); i++) {
                 pieces.get(i).shift(text.length());
             }
+            globalPiece.end += text.length();
 
             return this;
+        }
+
+        /**
+         * Returns the text of this piece.
+         *
+         * @return
+         */
+        public CharSequence getText() {
+            return str.subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            return getText().toString();
         }
 
         private void tempRemoveSpans() {
