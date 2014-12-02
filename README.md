@@ -31,6 +31,9 @@ spanalot.get(0).setText("Hello 2,").addSpan(strikethrough());
 
 // Make sure you call setText() again to apply your changes!
 textView.setText(spanalot);
+
+// If you just need a single piece, you can use a more convienent constructor
+textView.setText(new Spanalot("Hello, World!", style(Typeface.ITALIC)));
 ```
 
 That's it! What could be simpler?
