@@ -16,7 +16,7 @@ import static me.tatarka.spanalot.Spanalot.*;
 // Construct a new spanalot with some global spans. 
 // You can use the provided functions to simplify common spans.
 Spanalot spanalot = new Spanalot(backgroundColor(getResources().getColor(R.color.red_200)))
-        // Append segments of text with spanns that apply to them.
+        // Append segments of text with spans that apply to them.
         .append("Hello, ", style(Typeface.ITALIC))
         .append("World!", textColor(getResources().getColor(R.color.purple_900)),
                           textSizeRelative(1.5f),
