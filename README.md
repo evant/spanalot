@@ -25,7 +25,7 @@ textView.setText(spanalot);
 // You can get pieces that you appened and modify their contents and spans.
 spanalot.get(0).setText("Hello 2,").addSpan(strikethrough());
 
-// Make sure you call setText() again to apply you changes!
+// Make sure you call setText() again to apply your changes!
 textView.setText(spanalot);
 ```
 
