@@ -38,6 +38,19 @@ public class Spanalot implements Spanned {
     }
 
     /**
+     * Constructs a new {@code Spanalot} with the text and spans.
+     * This is a convenience method for
+     * {@code new Spanalot().append(CharSequence, Object... spans)} for cases where you only have
+     * one text segment.
+     *
+     * @param text  the text to append
+     * @param spans the spans to add
+     */
+    public Spanalot(CharSequence text, Object... spans) {
+        append(text, spans);
+    }
+
+    /**
      * Appends a segment of text with the given spans and creates a backing {@link Spanalot.Piece}
      * that you can use to modify it. (see {@link #get(int)} and {@link #getAll()}) for modifying
      * created pieces).
