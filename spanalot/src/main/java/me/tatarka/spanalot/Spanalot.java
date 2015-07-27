@@ -223,14 +223,14 @@ public class Spanalot implements Spanned {
 
         public Piece addSpan(Object span) {
             spans.add(span);
-            str.setSpan(span, start, end, SPAN_INCLUSIVE_INCLUSIVE);
+            str.setSpan(span, start, end, SPAN_EXCLUSIVE_EXCLUSIVE);
             return this;
         }
 
         public Piece addSpans(Object... spans) {
             Collections.addAll(this.spans, spans);
             for (Object span : spans) {
-                str.setSpan(span, start, end, SPAN_INCLUSIVE_INCLUSIVE);
+                str.setSpan(span, start, end, SPAN_EXCLUSIVE_EXCLUSIVE);
             }
             return this;
         }
