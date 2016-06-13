@@ -1,14 +1,13 @@
 apply plugin: 'com.android.application'
-apply plugin: 'me.tatarka.holdr'
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "21.1.1"
+    compileSdkVersion 23
+    buildToolsVersion "23.0.3"
 
     defaultConfig {
         applicationId "me.tatarka.spanalot.sample"
         minSdkVersion 10
-        targetSdkVersion 21
+        targetSdkVersion 23
         versionCode 1
         versionName "1.0"
     }
@@ -21,6 +20,6 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:21.0.2'
+    compile 'com.android.support:appcompat-v7:23.4.0'
     compile project(':spanalot')
 }
