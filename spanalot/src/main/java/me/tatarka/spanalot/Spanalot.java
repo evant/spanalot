@@ -3,6 +3,7 @@ package me.tatarka.spanalot;
 import android.support.annotation.NonNull;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.style.AbsoluteSizeSpan;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
@@ -14,32 +15,32 @@ import android.text.style.SuperscriptSpan;
 import android.text.style.UnderlineSpan;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.Formatter;
+import java.util.Locale;
 
 /**
- * A simple wrapper around a spannable to make it easier to work with. Each time you append some
- * text, you create a new {@link Spanalot.Piece} which you can modify the contents and spans
- * individually. You can also add and remove global spans which apply to all pieces.
+ * A simple wrapper around a spannable to make it easier to work with.
  */
-public class Spanalot implements Spanned {
-    protected SpannableStringBuilder str = new SpannableStringBuilder();
-    private List<Piece> pieces = new ArrayList<>();
-    private Piece globalPiece = new Piece(0, 0);
+public final class Spanalot implements Spanned {
+
+    private final SpannableStringBuilder str = new SpannableStringBuilder();
+    private ArrayList<Object> globalSpans;
+    private boolean globalSpansApplied;
+    private FormatRecorder recorder;
 
     /**
-     * Constructs a new {@code Spanalot} with the given global spans.
-     *
-     * @param spans the global spans
+     * Constructs a new {@code Spanalot}.
      */
     public Spanalot(Object... spans) {
-        addGlobalSpans(spans);
+        if (spans.length != 0) {
+            globalSpans = new ArrayList<>(spans.length);
+            Collections.addAll(globalSpans, spans);
+        }
     }
 
     /**
-     * Constructs a new {@code Spanalot} with the text and spans.
-     * This is a convenience method for
+     * Constructs a new {@code Spanalot} with the text and spans. This is a convenience method for
      * {@code new Spanalot().append(CharSequence, Object... spans)} for cases where you only have
      * one text segment.
      *
@@ -51,142 +52,108 @@ public class Spanalot implements Spanned {
     }
 
     /**
-     * Appends a segment of text with the given spans and creates a backing {@link Spanalot.Piece}
-     * that you can use to modify it. (see {@link #get(int)} and {@link #getAll()}) for modifying
-     * created pieces).
+     * Appends a segment of text with the given spans.
      *
      * @param text  the text to append
      * @param spans the spans to apply to the text
-     * @return
      */
     public Spanalot append(CharSequence text, Object... spans) {
+        clearGlobalSpans();
         int start = str.length();
         int end = start + text.length();
         str.append(text);
-        Piece piece = new Piece(start, end);
-        piece.addSpans(spans);
-        pieces.add(piece);
-        globalPiece.end = end;
-        return this;
-    }
-
-    /**
-     * Returns the {@link Spanalot.Piece} at the given index.
-     *
-     * @param index the index
-     * @return
-     */
-    public Piece get(int index) {
-        return pieces.get(index);
-    }
-
-    /**
-     * Returns all {@link Spanalot.Piece}'s.
-     *
-     * @return
-     */
-    public Collection<Piece> getAll() {
-        return Collections.unmodifiableCollection(pieces);
-    }
-
-    /**
-     * Adds a span to the entire {@code Spanalot}.
-     *
-     * @param span the span to add
-     * @return
-     */
-    public Spanalot addGlobalSpan(Object span) {
-        globalPiece.addSpan(span);
-        return this;
-    }
-
-    /**
-     * Adds multiple spans to the entire {@code Spanalot}
-     *
-     * @param spans the spans to add
-     * @return
-     */
-    public Spanalot addGlobalSpans(Object... spans) {
-        globalPiece.addSpans(spans);
-        return this;
-    }
-
-    public Spanalot removeGlobalSpan(Object span) {
-        globalPiece.removeSpan(span);
-        return this;
-    }
-
-    public Spanalot removeGlobalSpans(Object... spans) {
-        globalPiece.removeSpans(spans);
-        return this;
-    }
-
-    public Spanalot setGlobalSpan(Object span) {
-        globalPiece.setSpan(span);
-        return this;
-    }
-
-    public Spanalot setGlobalSpans(Object... spans) {
-        globalPiece.setSpans(spans);
-        return this;
-    }
-
-    public Spanalot clearGlobalSpans() {
-        globalPiece.clearSpans();
-        return this;
-    }
-
-    public Spanalot clearAllSpans() {
-        globalPiece.clearSpans();
-        for (Piece piece : pieces) {
-            piece.clearSpans();
+        for (Object span : spans) {
+            str.setSpan(span, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return this;
     }
 
-    public Spanalot clear() {
-        str.clear();
-        pieces.clear();
+    /**
+     * Appends a segment of text formatted with the given format string as with {@link
+     * String#format(String, Object...)}. However, all spans are preserved in the format args.
+     *
+     * @param format the format string
+     * @param args   the format args
+     */
+    public Spanalot format(String format, Object... args) {
+        return format(Locale.getDefault(), format, args);
+    }
+
+    /**
+     * Appends a segment of text formatted with the given format string as with {@link
+     * String#format(Locale, String, Object...)}. However, all spans are preserved in the format
+     * args.
+     *
+     * @param format the format string
+     * @param args   the format args
+     */
+    public Spanalot format(Locale locale, String format, Object... args) {
+        if (locale == null) {
+            throw new NullPointerException("locale == null");
+        }
+        if (format == null) {
+            throw new NullPointerException("formatString == null");
+        }
+        clearGlobalSpans();
+        recorder = new FormatRecorder(args);
+        Formatter formatter = new Formatter(recorder, locale);
+        formatter.format(format, recorder.args);
+        recorder.applySpans();
+        recorder = null;
         return this;
+    }
+
+    private void ensureGlobalSpans() {
+        if (globalSpans != null && !globalSpansApplied) {
+            for (Object span : globalSpans) {
+                str.setSpan(span, 0, str.length(), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+            }
+            globalSpansApplied = true;
+        }
+    }
+
+    private void clearGlobalSpans() {
+        if (globalSpans != null && globalSpansApplied) {
+            for (Object span : globalSpans) {
+                str.removeSpan(span);
+            }
+            globalSpansApplied = false;
+        }
     }
 
     @Override
     public <T> T[] getSpans(int start, int end, Class<T> type) {
+        ensureGlobalSpans();
         return str.getSpans(start, end, type);
     }
 
     @Override
     public int getSpanStart(Object tag) {
+        ensureGlobalSpans();
         return str.getSpanStart(tag);
     }
 
     @Override
     public int getSpanEnd(Object tag) {
+        ensureGlobalSpans();
         return str.getSpanEnd(tag);
     }
 
     @Override
     public int getSpanFlags(Object tag) {
+        ensureGlobalSpans();
         return str.getSpanFlags(tag);
     }
 
     @Override
     public int nextSpanTransition(int start, int limit, Class type) {
+        ensureGlobalSpans();
         return str.nextSpanTransition(start, limit, type);
     }
 
     @Override
     public int length() {
         return str.length();
-    }
-
-    /**
-     * Returns the number of pieces stored in the {@code Spanalot}.
-     *
-     * @return the number of pieces
-     */
-    public int size() {
-        return pieces.size();
     }
 
     @Override
@@ -196,6 +163,7 @@ public class Spanalot implements Spanned {
 
     @Override
     public CharSequence subSequence(int start, int end) {
+        ensureGlobalSpans();
         return str.subSequence(start, end);
     }
 
@@ -206,178 +174,7 @@ public class Spanalot implements Spanned {
     }
 
     /**
-     * A piece represents a section of the {@code Spanalot} that was added with
-     * {@link #append(CharSequence, Object...)}. You can get a piece with {@link #get(int)} and
-     * then modify it's contents and applied spans.
-     */
-    public class Piece {
-        private int start;
-        private int end;
-        private List<Object> spans;
-
-        private Piece(int start, int end) {
-            this.start = start;
-            this.end = end;
-            this.spans = new ArrayList<>();
-        }
-
-        public Piece addSpan(Object span) {
-            spans.add(span);
-            str.setSpan(span, start, end, SPAN_EXCLUSIVE_EXCLUSIVE);
-            return this;
-        }
-
-        public Piece addSpans(Object... spans) {
-            Collections.addAll(this.spans, spans);
-            for (Object span : spans) {
-                str.setSpan(span, start, end, SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-            return this;
-        }
-
-        public Piece removeSpan(Object span) {
-            spans.remove(span);
-            str.removeSpan(span);
-            return this;
-        }
-
-        public Piece removeSpans(Object... spans) {
-            for (Object span : spans) {
-                this.spans.remove(span);
-            }
-            for (Object span : spans) {
-                str.removeSpan(span);
-            }
-            return this;
-        }
-
-        /**
-         * Sets the given span, clearing out any existing ones.
-         *
-         * @param span the span to set
-         * @return
-         */
-        public Piece setSpan(Object span) {
-            clearSpans();
-            addSpan(span);
-            return this;
-        }
-
-        /**
-         * Sets the given spans, clearing out any existing ones.
-         *
-         * @param spans the spans to set
-         * @return
-         */
-        public Piece setSpans(Object... spans) {
-            clearSpans();
-            addSpans(spans);
-            return this;
-        }
-
-        public Piece clearSpans() {
-            for (Object span : spans) {
-                str.removeSpan(span);
-            }
-            spans.clear();
-            return this;
-        }
-
-        /**
-         * Sets the text for this piece replacing the previous text, keeping any spans intact.
-         *
-         * @param text the text to set
-         * @return
-         */
-        public Piece setText(CharSequence text) {
-            tempRemoveSpans();
-            int newEnd = start + text.length();
-            int oldEnd = end;
-            str.replace(start, end, text);
-            end = newEnd;
-            restoreSpans();
-
-            // Need to update downstream positions
-            for (int i = pieces.indexOf(this) + 1; i < pieces.size(); i++) {
-                pieces.get(i).shift(newEnd - oldEnd);
-            }
-            globalPiece.end += newEnd - oldEnd;
-
-            return this;
-        }
-
-        /**
-         * Sets the text and spans for the piece, replacing the previous text and spans.
-         *
-         * @param text  the text to set
-         * @param spans the spans to set
-         * @return
-         */
-        public Piece set(CharSequence text, Object... spans) {
-            clearSpans();
-            setText(text);
-            addSpans(spans);
-            return this;
-        }
-
-        /**
-         * Appends the text to the piece, keeping any spans intact.
-         *
-         * @param text the text to append
-         * @return
-         */
-        public Piece append(CharSequence text) {
-            tempRemoveSpans();
-            int newEnd = end + text.length();
-            str.insert(end, text);
-            end = newEnd;
-            restoreSpans();
-
-            // Need to update downstream positions
-            for (int i = pieces.indexOf(this) + 1; i < pieces.size(); i++) {
-                pieces.get(i).shift(text.length());
-            }
-            globalPiece.end += text.length();
-
-            return this;
-        }
-
-        /**
-         * Returns the text of this piece.
-         *
-         * @return
-         */
-        public CharSequence getText() {
-            return str.subSequence(start, end);
-        }
-
-        @Override
-        public String toString() {
-            return getText().toString();
-        }
-
-        private void tempRemoveSpans() {
-            for (Object span : spans) {
-                str.removeSpan(span);
-            }
-        }
-
-        private void restoreSpans() {
-            for (Object span : spans) {
-                str.setSpan(span, start, end, SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-        }
-
-        private void shift(int amount) {
-            start += amount;
-            end += amount;
-        }
-    }
-
-    /**
      * A convenience function to create a new {@link android.text.style.SubscriptSpan}.
-     *
-     * @return
      */
     public static SubscriptSpan subscript() {
         return new SubscriptSpan();
@@ -385,8 +182,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.SuperscriptSpan}.
-     *
-     * @return
      */
     public static SuperscriptSpan superscript() {
         return new SuperscriptSpan();
@@ -394,8 +189,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.StrikethroughSpan}.
-     *
-     * @return
      */
     public static StrikethroughSpan strikethough() {
         return new StrikethroughSpan();
@@ -403,8 +196,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.UnderlineSpan}.
-     *
-     * @return
      */
     public static UnderlineSpan underline() {
         return new UnderlineSpan();
@@ -412,8 +203,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.StyleSpan}.
-     *
-     * @return
      */
     public static StyleSpan style(int style) {
         return new StyleSpan(style);
@@ -421,8 +210,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.AbsoluteSizeSpan}.
-     *
-     * @return
      */
     public static AbsoluteSizeSpan textSize(int textSize) {
         return new AbsoluteSizeSpan(textSize);
@@ -430,8 +217,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.RelativeSizeSpan}.
-     *
-     * @return
      */
     public static RelativeSizeSpan textSizeRelative(float textSizeRelative) {
         return new RelativeSizeSpan(textSizeRelative);
@@ -439,8 +224,6 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.ForegroundColorSpan}.
-     *
-     * @return
      */
     public static ForegroundColorSpan textColor(int color) {
         return new ForegroundColorSpan(color);
@@ -448,10 +231,119 @@ public class Spanalot implements Spanned {
 
     /**
      * A convenience function to create a new {@link android.text.style.BackgroundColorSpan}.
-     *
-     * @return
      */
     public static BackgroundColorSpan backgroundColor(int color) {
         return new BackgroundColorSpan(color);
+    }
+
+    /**
+     * Records the locations of formatted strings so spans can be applied.
+     */
+    private class FormatRecorder implements Appendable {
+        Object[] args;
+        int[][] indexes;
+
+        FormatRecorder(Object[] args) {
+            this.args = wrapArgs(args);
+            indexes = new int[args.length][];
+        }
+
+        Object[] wrapArgs(Object[] args) {
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                if (arg instanceof Spanned) {
+                    args[i] = new RecordingSpanned((Spanned) arg);
+                }
+            }
+            return args;
+        }
+
+        void record(int index) {
+            int argIndex = findArgIndex();
+            if (argIndex == -1) {
+                return;
+            }
+            int[] n = indexes[argIndex];
+            if (n == null) {
+                indexes[argIndex] = new int[]{index};
+            } else {
+                int[] newN = new int[n.length + 1];
+                System.arraycopy(n, 0, newN, 0, n.length);
+                newN[newN.length - 1] = index;
+                indexes[argIndex] = newN;
+            }
+        }
+
+        int findArgIndex() {
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                if (arg instanceof RecordingSpanned
+                        && ((RecordingSpanned) arg).takeCalled()) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        void applySpans() {
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                if (arg instanceof RecordingSpanned) {
+                    Spanned spanned = ((RecordingSpanned) arg).str;
+                    int[] n = indexes[i];
+                    for (int start : n) {
+                        TextUtils.copySpansFrom(spanned, 0, spanned.length(), null, str, start);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Appendable append(char c) {
+            clearGlobalSpans();
+            str.append(c);
+            return this;
+        }
+
+        @Override
+        public Appendable append(CharSequence csq) {
+            if (recorder != null) {
+                recorder.record(str.length());
+            }
+            clearGlobalSpans();
+            str.append(csq);
+            return this;
+        }
+
+        @Override
+        public Appendable append(CharSequence csq, int start, int end) {
+            if (recorder != null) {
+                recorder.record(str.length());
+            }
+            clearGlobalSpans();
+            str.append(csq, start, end);
+            return this;
+        }
+    }
+
+    private class RecordingSpanned {
+        Spanned str;
+        boolean called;
+
+        RecordingSpanned(Spanned str) {
+            this.str = str;
+        }
+
+        @Override
+        public String toString() {
+            called = true;
+            return str.toString();
+        }
+
+        boolean takeCalled() {
+            boolean result = called;
+            called = false;
+            return result;
+        }
     }
 }
