@@ -4,6 +4,7 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Html;
 import android.widget.TextView;
 
 import me.tatarka.spanalot.Spanalot;
@@ -33,9 +34,9 @@ public class MainActivity extends AppCompatActivity {
         helloWorld.setText(spanalot);
 
         Spanalot spanalot2 = new Spanalot(backgroundColor(red))
-                .format("%1$s, %2$s!",
-                        new Spanalot("Hello", style(Typeface.ITALIC)),
-                        new Spanalot("World", underline(), textColor(purple), textSizeRelative(1.5f)));
+                .format("%1$s, %2$s!")
+                .arg("Hello", style(Typeface.ITALIC))
+                .arg(Html.fromHtml("<b>World</b>"));
 
         helloWorld2.setText(spanalot2);
     }
