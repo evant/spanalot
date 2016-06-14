@@ -15,6 +15,7 @@ import android.text.style.SuperscriptSpan;
 import android.text.style.UnderlineSpan;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.Locale;
@@ -27,7 +28,6 @@ public final class Spanalot implements Spanned {
     private final SpannableStringBuilder str = new SpannableStringBuilder();
     private ArrayList<Object> globalSpans;
     private boolean globalSpansApplied;
-    private FormatRecorder recorder;
 
     /**
      * Constructs a new {@code Spanalot}.
@@ -95,11 +95,9 @@ public final class Spanalot implements Spanned {
             throw new NullPointerException("formatString == null");
         }
         clearGlobalSpans();
-        recorder = new FormatRecorder(args);
+        FormatRecorder recorder = new FormatRecorder();
         Formatter formatter = new Formatter(recorder, locale);
-        formatter.format(format, recorder.args);
-        recorder.applySpans();
-        recorder = null;
+        formatter.format(format, recorder.wrapArgs(args));
         return this;
     }
 
@@ -240,62 +238,23 @@ public final class Spanalot implements Spanned {
      * Records the locations of formatted strings so spans can be applied.
      */
     private class FormatRecorder implements Appendable {
-        Object[] args;
-        int[][] indexes;
+        Spanned nextArg;
 
-        FormatRecorder(Object[] args) {
-            this.args = wrapArgs(args);
-            indexes = new int[args.length][];
+        FormatRecorder() {
         }
 
         Object[] wrapArgs(Object[] args) {
+            Object[] newArgs = args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
                 if (arg instanceof Spanned) {
-                    args[i] = new RecordingSpanned((Spanned) arg);
-                }
-            }
-            return args;
-        }
-
-        void record(int index) {
-            int argIndex = findArgIndex();
-            if (argIndex == -1) {
-                return;
-            }
-            int[] n = indexes[argIndex];
-            if (n == null) {
-                indexes[argIndex] = new int[]{index};
-            } else {
-                int[] newN = new int[n.length + 1];
-                System.arraycopy(n, 0, newN, 0, n.length);
-                newN[newN.length - 1] = index;
-                indexes[argIndex] = newN;
-            }
-        }
-
-        int findArgIndex() {
-            for (int i = 0; i < args.length; i++) {
-                Object arg = args[i];
-                if (arg instanceof RecordingSpanned
-                        && ((RecordingSpanned) arg).takeCalled()) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        void applySpans() {
-            for (int i = 0; i < args.length; i++) {
-                Object arg = args[i];
-                if (arg instanceof RecordingSpanned) {
-                    Spanned spanned = ((RecordingSpanned) arg).str;
-                    int[] n = indexes[i];
-                    for (int start : n) {
-                        TextUtils.copySpansFrom(spanned, 0, spanned.length(), null, str, start);
+                    if (newArgs == args) {
+                        newArgs = Arrays.copyOf(args, args.length);
                     }
+                    newArgs[i] = new RecordingSpanned((Spanned) arg);
                 }
             }
+            return newArgs;
         }
 
         @Override
@@ -307,43 +266,45 @@ public final class Spanalot implements Spanned {
 
         @Override
         public Appendable append(CharSequence csq) {
-            if (recorder != null) {
-                recorder.record(str.length());
-            }
             clearGlobalSpans();
-            str.append(csq);
+            if (nextArg != null) {
+                int strStart = str.length();
+                str.append(csq);
+                TextUtils.copySpansFrom(nextArg, 0, csq.length(), null, str, strStart);
+                nextArg = null;
+            } else {
+                str.append(csq);
+            }
             return this;
         }
 
         @Override
         public Appendable append(CharSequence csq, int start, int end) {
-            if (recorder != null) {
-                recorder.record(str.length());
-            }
             clearGlobalSpans();
-            str.append(csq, start, end);
+            if (nextArg != null) {
+                int strStart = str.length();
+                str.append(csq, start, end);
+                TextUtils.copySpansFrom(nextArg, start, end, null, str, strStart);
+                nextArg = null;
+            } else {
+                str.append(csq, start, end);
+            }
             return this;
         }
-    }
 
-    private class RecordingSpanned {
-        Spanned str;
-        boolean called;
+        private class RecordingSpanned {
+            Spanned str;
 
-        RecordingSpanned(Spanned str) {
-            this.str = str;
-        }
+            RecordingSpanned(Spanned str) {
+                this.str = str;
+            }
 
-        @Override
-        public String toString() {
-            called = true;
-            return str.toString();
-        }
-
-        boolean takeCalled() {
-            boolean result = called;
-            called = false;
-            return result;
+            @Override
+            public String toString() {
+                nextArg = str;
+                return str.toString();
+            }
         }
     }
+
 }
