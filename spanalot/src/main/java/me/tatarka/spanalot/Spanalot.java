@@ -1,6 +1,7 @@
 package me.tatarka.spanalot;
 
 import android.support.annotation.NonNull;
+import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -15,9 +16,9 @@ import android.text.style.SuperscriptSpan;
 import android.text.style.UnderlineSpan;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -28,6 +29,7 @@ public final class Spanalot implements Spanned {
     private final SpannableStringBuilder str = new SpannableStringBuilder();
     private ArrayList<Object> globalSpans;
     private boolean globalSpansApplied;
+    private FormatHandler formatHandler;
 
     /**
      * Constructs a new {@code Spanalot}.
@@ -59,6 +61,7 @@ public final class Spanalot implements Spanned {
      */
     public Spanalot append(CharSequence text, Object... spans) {
         clearGlobalSpans();
+        ensureFormat();
         int start = str.length();
         int end = start + text.length();
         str.append(text);
@@ -73,10 +76,9 @@ public final class Spanalot implements Spanned {
      * String#format(String, Object...)}. However, all spans are preserved in the format args.
      *
      * @param format the format string
-     * @param args   the format args
      */
-    public Spanalot format(String format, Object... args) {
-        return format(Locale.getDefault(), format, args);
+    public Spanalot format(String format) {
+        return format(Locale.getDefault(), format);
     }
 
     /**
@@ -85,19 +87,27 @@ public final class Spanalot implements Spanned {
      * args.
      *
      * @param format the format string
-     * @param args   the format args
      */
-    public Spanalot format(Locale locale, String format, Object... args) {
+    public Spanalot format(Locale locale, String format) {
         if (locale == null) {
             throw new NullPointerException("locale == null");
         }
         if (format == null) {
             throw new NullPointerException("formatString == null");
         }
-        clearGlobalSpans();
-        FormatRecorder recorder = new FormatRecorder();
-        Formatter formatter = new Formatter(recorder, locale);
-        formatter.format(format, recorder.wrapArgs(args));
+        ensureFormat();
+        formatHandler = new FormatHandler(format, locale);
+        return this;
+    }
+
+    /**
+     * Represents a format arg. You must call {@link #format(String)} first.
+     */
+    public Spanalot arg(Object arg, Object... spans) {
+        if (formatHandler == null) {
+            throw new IllegalStateException("Must call format() before arg()");
+        }
+        formatHandler.addArg(arg, spans);
         return this;
     }
 
@@ -119,48 +129,64 @@ public final class Spanalot implements Spanned {
         }
     }
 
+    private void ensureFormat() {
+        if (formatHandler != null) {
+            clearGlobalSpans();
+            formatHandler.format(str);
+            formatHandler = null;
+        }
+    }
+
     @Override
     public <T> T[] getSpans(int start, int end, Class<T> type) {
+        ensureFormat();
         ensureGlobalSpans();
         return str.getSpans(start, end, type);
     }
 
     @Override
     public int getSpanStart(Object tag) {
+        ensureFormat();
         ensureGlobalSpans();
         return str.getSpanStart(tag);
     }
 
     @Override
     public int getSpanEnd(Object tag) {
+        ensureFormat();
         ensureGlobalSpans();
         return str.getSpanEnd(tag);
     }
 
     @Override
     public int getSpanFlags(Object tag) {
+        ensureFormat();
         ensureGlobalSpans();
         return str.getSpanFlags(tag);
     }
 
     @Override
     public int nextSpanTransition(int start, int limit, Class type) {
+        ensureFormat();
         ensureGlobalSpans();
         return str.nextSpanTransition(start, limit, type);
     }
 
     @Override
     public int length() {
+        ensureFormat();
         return str.length();
     }
 
     @Override
     public char charAt(int index) {
+        ensureFormat();
         return str.charAt(index);
     }
 
     @Override
     public CharSequence subSequence(int start, int end) {
+        ensureFormat();
         ensureGlobalSpans();
         return str.subSequence(start, end);
     }
@@ -168,6 +194,7 @@ public final class Spanalot implements Spanned {
     @Override
     @NonNull
     public String toString() {
+        ensureFormat();
         return str.toString();
     }
 
@@ -237,54 +264,57 @@ public final class Spanalot implements Spanned {
     /**
      * Records the locations of formatted strings so spans can be applied.
      */
-    private class FormatRecorder implements Appendable {
-        Spanned nextArg;
+    private static class FormatHandler implements Appendable {
+        final String format;
+        final Locale locale;
+        final List<Object> args;
+        RecordingSpanned nextArg;
+        SpannableStringBuilder str;
 
-        FormatRecorder() {
+        FormatHandler(String format, Locale locale) {
+            this.format = format;
+            this.locale = locale;
+            this.args = new ArrayList<>();
         }
 
-        Object[] wrapArgs(Object[] args) {
-            Object[] newArgs = args;
-            for (int i = 0; i < args.length; i++) {
-                Object arg = args[i];
-                if (arg instanceof Spanned) {
-                    if (newArgs == args) {
-                        newArgs = Arrays.copyOf(args, args.length);
-                    }
-                    newArgs[i] = new RecordingSpanned((Spanned) arg);
-                }
+        void addArg(Object arg, Object... spans) {
+            if (arg instanceof Spanned) {
+                args.add(new RecordingSpanned((Spanned) arg, spans));
+            } else if (spans.length > 0) {
+                SpannableString str = new SpannableString(arg != null ? arg.toString() : "null");
+                args.add(new RecordingSpanned(str, spans));
+            } else {
+                args.add(arg);
             }
-            return newArgs;
+        }
+
+        void format(SpannableStringBuilder str) {
+            this.str = str;
+            Formatter formatter = new Formatter(this, locale);
+            formatter.format(format, args.toArray());
+            this.str = null;
         }
 
         @Override
         public Appendable append(char c) {
-            clearGlobalSpans();
             str.append(c);
             return this;
         }
 
         @Override
         public Appendable append(CharSequence csq) {
-            clearGlobalSpans();
-            if (nextArg != null) {
-                int strStart = str.length();
-                str.append(csq);
-                TextUtils.copySpansFrom(nextArg, 0, csq.length(), null, str, strStart);
-                nextArg = null;
-            } else {
-                str.append(csq);
-            }
-            return this;
+            return append(csq, 0, csq.length());
         }
 
         @Override
         public Appendable append(CharSequence csq, int start, int end) {
-            clearGlobalSpans();
             if (nextArg != null) {
                 int strStart = str.length();
                 str.append(csq, start, end);
-                TextUtils.copySpansFrom(nextArg, start, end, null, str, strStart);
+                TextUtils.copySpansFrom(nextArg.str, start, end, null, str, strStart);
+                for (Object span : nextArg.spans) {
+                    str.setSpan(span, strStart, strStart + (end - start), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
                 nextArg = null;
             } else {
                 str.append(csq, start, end);
@@ -294,14 +324,16 @@ public final class Spanalot implements Spanned {
 
         private class RecordingSpanned {
             Spanned str;
+            Object[] spans;
 
-            RecordingSpanned(Spanned str) {
+            RecordingSpanned(Spanned str, Object[] spans) {
                 this.str = str;
+                this.spans = spans;
             }
 
             @Override
             public String toString() {
-                nextArg = str;
+                nextArg = this;
                 return str.toString();
             }
         }
