@@ -31,10 +31,10 @@ textView.setText(new Spanalot("Hello, World!", style(Typeface.ITALIC)));
 
 // You can format like String.format() too. Unlike String.format() spans are preserved!
 Spanalot spanalot = new Spanalot(backgroundColor(getResources().getColor(R.color.red_200)))
-        .format("%1$s, %2$s!",
-                new Spanalot("Hello", style(Typeface.ITALIC)),
+        .format("%1$s, %2$s!")
+                .arg("Hello", style(Typeface.ITALIC))
                 // Any styled CharSequence will work.
-                Html.fromHtml("<b>World</b>"));
+                .arg(Html.fromHtml("<b>World</b>"));
 ```
 
 That's it! What could be simpler?
