@@ -26,14 +26,15 @@ Spanalot spanalot = new Spanalot(backgroundColor(getResources().getColor(R.color
 // Spanalot is just a Spanned, use it like one!
 textView.setText(spanalot);
 
-// You can get pieces that you appened and modify their contents and spans.
-spanalot.get(0).setText("Hello 2,").addSpan(strikethrough());
-
-// Make sure you call setText() again to apply your changes!
-textView.setText(spanalot);
-
 // If you just need a single piece, you can use a more convienent constructor
 textView.setText(new Spanalot("Hello, World!", style(Typeface.ITALIC)));
+
+// You can format like String.format() too. Unlike String.format() spans are preserved!
+Spanalot spanalot = new Spanalot(backgroundColor(getResources().getColor(R.color.red_200)))
+        .format("%1$s, %2$s!",
+                new Spanalot("Hello", style(Typeface.ITALIC)),
+                // Any styled CharSequence will work.
+                Html.fromHtml("<b>World</b>"));
 ```
 
 That's it! What could be simpler?
