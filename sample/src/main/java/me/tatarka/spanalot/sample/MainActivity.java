@@ -2,8 +2,6 @@ package me.tatarka.spanalot.sample;
 
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.widget.TextView;
 
@@ -15,6 +13,9 @@ import static me.tatarka.spanalot.Spanalot.textColor;
 import static me.tatarka.spanalot.Spanalot.textSizeRelative;
 import static me.tatarka.spanalot.Spanalot.underline;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -22,8 +23,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        TextView helloWorld = (TextView) findViewById(R.id.hello_world);
-        TextView helloWorld2 = (TextView) findViewById(R.id.hello_world2);
+        TextView helloWorld = findViewById(R.id.hello_world);
+        TextView helloWorld2 = findViewById(R.id.hello_world2);
         int red = ContextCompat.getColor(this, R.color.red_200);
         int purple = ContextCompat.getColor(this, R.color.purple_900);
 

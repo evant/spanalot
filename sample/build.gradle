@@ -1,25 +1,24 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.3"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId "me.tatarka.spanalot.sample"
-        minSdkVersion 10
-        targetSdkVersion 23
-        versionCode 1
-        versionName "1.0"
+        namespace = "me.tatarka.spanalot.sample"
+        minSdk = 21
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled = false
+            proguardFiles(getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro')
         }
     }
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:23.4.0'
-    compile project(':spanalot')
+    implementation("androidx.appcompat:appcompat:1.0.0")
+    implementation(project(':spanalot'))
 }
