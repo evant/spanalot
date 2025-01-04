@@ -6,8 +6,8 @@ A simple utility for creating and modifying AnnotateStrings/Spannables in Androi
 This may end up on maven central sometime in the future, in the mean time, it's just one class
 so you can copy-and-paste it into your project.
 
-- Compose (Annotated String): https://github.com/evant/spanalot/blob/master/spanalot-compose/src/main/java/me/tatarka/spanalot/Spanalot.kt
-- Spannable: https://github.com/evant/spanalot/blob/master/spanalot/src/main/java/me/tatarka/spanalot/Spanalot.java
+- Compose (Annotated String): https://github.com/evant/spanalot/blob/main/spanalot-compose/src/main/java/me/tatarka/spanalot/Spanalot.kt
+- Spannable: https://github.com/evant/spanalot/blob/main/spanalot/src/main/java/me/tatarka/spanalot/Spanalot.java
 
 ## Usage
 
