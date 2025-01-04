@@ -1,2 +1,3 @@
 rootProject.name = 'spanalot-project'
 include ':sample', ':spanalot'
+include ':spanalot-compose'

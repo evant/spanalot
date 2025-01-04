@@ -1,44 +1,119 @@
-package me.tatarka.spanalot.sample;
+package me.tatarka.spanalot.sample
 
-import android.graphics.Typeface;
-import android.os.Bundle;
-import android.text.Html;
-import android.widget.TextView;
+import android.graphics.Typeface
+import android.os.Bundle
+import android.text.Html
+import android.view.LayoutInflater
+import android.widget.FrameLayout
+import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.fromHtml
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import me.tatarka.spanalot.Spanalot
+import me.tatarka.spanalot.append
+import me.tatarka.spanalot.appendFormat
+import me.tatarka.spanalot.buildAnnotatedString
 
-import me.tatarka.spanalot.Spanalot;
+class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-import static me.tatarka.spanalot.Spanalot.backgroundColor;
-import static me.tatarka.spanalot.Spanalot.style;
-import static me.tatarka.spanalot.Spanalot.textColor;
-import static me.tatarka.spanalot.Spanalot.textSizeRelative;
-import static me.tatarka.spanalot.Spanalot.underline;
+        setContent {
+            MaterialTheme {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(title = {
+                            Text(stringResource(R.string.app_name))
+                        })
+                    }
+                ) { padding ->
+                    Column(modifier = Modifier.padding(padding)) {
+                        AndroidView(
+                            factory = { context ->
+                                FrameLayout(context).apply {
+                                    LayoutInflater.from(context)
+                                        .inflate(R.layout.view_main, this, true)
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
+                                    val helloWorld = findViewById<TextView>(R.id.hello_world)
+                                    val helloWorld2 = findViewById<TextView>(R.id.hello_world2)
+                                    val red = ContextCompat.getColor(context, R.color.red_200)
+                                    val purple = ContextCompat.getColor(context, R.color.purple_900)
 
+                                    helloWorld.text = Spanalot(Spanalot.backgroundColor(red))
+                                        .append("Hello, ", Spanalot.style(Typeface.ITALIC))
+                                        .append(
+                                            "World!",
+                                            Spanalot.underline(),
+                                            Spanalot.textColor(purple),
+                                            Spanalot.textSizeRelative(1.5f)
+                                        )
 
-public class MainActivity extends AppCompatActivity {
+                                    helloWorld2.text = Spanalot(Spanalot.backgroundColor(red))
+                                        .format("%1\$s, %2\$s!")
+                                        .arg("Hello", Spanalot.style(Typeface.ITALIC))
+                                        .arg(Html.fromHtml("<b>World</b>"))
+                                }
+                            }
+                        )
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        TextView helloWorld = findViewById(R.id.hello_world);
-        TextView helloWorld2 = findViewById(R.id.hello_world2);
-        int red = ContextCompat.getColor(this, R.color.red_200);
-        int purple = ContextCompat.getColor(this, R.color.purple_900);
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            val red = colorResource(R.color.red_200)
+                            val purple = colorResource(R.color.purple_900)
 
-        Spanalot spanalot = new Spanalot(backgroundColor(red))
-                .append("Hello, ", style(Typeface.ITALIC))
-                .append("World!", underline(), textColor(purple), textSizeRelative(1.5f));
+                            Text(
+                                text = buildAnnotatedString(SpanStyle(background = red)) {
+                                    append("Hello, ", SpanStyle(fontStyle = FontStyle.Italic))
+                                    append(
+                                        "World!",
+                                        SpanStyle(
+                                            textDecoration = TextDecoration.Underline,
+                                            color = purple,
+                                            fontSize = 1.5.em
+                                        )
+                                    )
+                                },
+                                fontSize = 24.sp,
+                                lineHeight = 40.sp,
+                            )
 
-        helloWorld.setText(spanalot);
-
-        Spanalot spanalot2 = new Spanalot(backgroundColor(red))
-                .format("%1$s, %2$s!")
-                .arg("Hello", style(Typeface.ITALIC))
-                .arg(Html.fromHtml("<b>World</b>"));
-
-        helloWorld2.setText(spanalot2);
+                            Text(
+                                text = buildAnnotatedString(SpanStyle(background = red)) {
+                                    appendFormat(
+                                        "%1\$s, %2\$s!",
+                                        AnnotatedString(
+                                            "Hello",
+                                            SpanStyle(fontStyle = FontStyle.Italic)
+                                        ),
+                                        AnnotatedString.fromHtml("<b>World</b>")
+                                    )
+                                },
+                                fontSize = 24.sp,
+                                lineHeight = 30.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

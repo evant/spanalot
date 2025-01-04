@@ -1,13 +1,43 @@
 spanalot
 ========
 
-A simple utility for creating and modifying spannables in Android
+A simple utility for creating and modifying AnnotateStrings/Spannables in Android
 
 This may end up on maven central sometime in the future, in the mean time, it's just one class
 so you can copy-and-paste it into your project.
-https://github.com/evant/spanalot/blob/master/spanalot/src/main/java/me/tatarka/spanalot/Spanalot.java
 
-### Usage
+- Compose (Annotated String): https://github.com/evant/spanalot/blob/master/spanalot-compose/src/main/java/me/tatarka/spanalot/Spanalot.kt
+- Spannable: https://github.com/evant/spanalot/blob/master/spanalot/src/main/java/me/tatarka/spanalot/Spanalot.java
+
+## Usage
+
+### Compose
+
+```kotlin
+import me.tatarka.spanalot.*
+
+// Construct a new AnnotatedString.Builder with some global styles
+val spanalot = buildAnnotatedString(SpanStyle(color = colorResource(R.color.red_200))) {
+    // Append segments of text with styles that apply to them.
+    append("Hello, ", SpanStyle(fontStyle = FontStyle.Italic))
+    append("World!", SpanStyle(color = colorResource(R.color.purple_900), fontSize = 1.5.em))
+}
+// And use it like normal
+Text(spanalot)
+
+// You can format like String.format() too. Unlike String.format() AnnotatedString args are preserved!
+val spanalot = buildAnnotatedString(SpanStyle(color = colorResource(R.color.red_200))) {
+    appendFormat(
+        "%1\$s, %2\$s!",
+        AnnotatedString("Hello", SpanStyle(fontStyle = FontStyle.Italic)),
+        AnnotatedString.fromHtml("<b>World</b>")
+    )
+}
+// Use AnnotatedString.format() for simpler cases.
+val spanalot = AnnotatedString.format("Hello, %s!", AnnotatedString.fromHtml("<b>World</b>"))
+```
+
+### Java
 
 ```java
 import me.tatarka.spanalot.Spanalot;
